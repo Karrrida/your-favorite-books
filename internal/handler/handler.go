@@ -3,6 +3,7 @@ package handler
 import (
 	"encoding/json"
 	"fmt"
+	"log/slog"
 	"net/http"
 	"runtime"
 
@@ -14,8 +15,9 @@ type UserHandler struct {
 }
 
 type RegisterBody struct {
-	Email string `json:"email"`
-	Name  string `json:"name"`
+	Email    string `json:"email"`
+	Name     string `json:"name"`
+	Password string `json:"password"`
 }
 
 func NewUserHandler(userService *service.UserService) *UserHandler {
@@ -42,11 +44,15 @@ func (h *UserHandler) Register(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	err = h.userService.Register(req.Email, req.Name)
+	err = h.userService.Register(req.Email, req.Name, req.Password)
 	if err != nil {
-		fmt.Println("ERROR IN HANDER", err)
-		http.Error(w, "Invalid params", http.StatusBadRequest)
+		slog.Error(fmt.Sprint(err))
+		http.Error(w, fmt.Sprint(err), http.StatusBadRequest)
+		return
 	}
+	w.Header().Set("Content-type", "application/json")
+	w.WriteHeader(http.StatusCreated)
+	json.NewEncoder(w).Encode(map[string]string{"message": "created", "status": "ok"})
 }
 
 func (h *UserHandler) GetByEmail(w http.ResponseWriter, r *http.Request) {

@@ -23,11 +23,12 @@ func NewUserRepository(db *sql.DB) *UserRepository {
 	}
 }
 
-func (r *UserRepository) CreateUser(email, name string) error {
+func (r *UserRepository) CreateUser(email, name, password_hash string) error {
 	_, err := r.db.Exec(`
-		INSERT INTO users (email, name)
-		VALUES ($1, $2)
-		`, email, name)
+		INSERT INTO users (email, name, password_hash)
+		VALUES ($1, $2, $3
+	)
+		`, email, name, password_hash)
 	return err
 }
 
