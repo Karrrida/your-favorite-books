@@ -4,27 +4,25 @@ import (
 	"fmt"
 	"log"
 	"net/http"
-	"os"
-
-	"github.com/joho/godotenv"
-
+	
+	"github.com/Karrrida/your-favorite-books/internal/config"
 	"github.com/Karrrida/your-favorite-books/internal/database"
 	"github.com/Karrrida/your-favorite-books/internal/handler"
 	"github.com/Karrrida/your-favorite-books/internal/repository"
 	"github.com/Karrrida/your-favorite-books/internal/service"
+
+	"github.com/go-chi/chi/v5"
+	"github.com/go-chi/chi/v5/middleware"
 )
 
 func main() {
-
-	err := godotenv.Load()
+	cfg, err := config.Load()
 
 	if err != nil {
-		panic("Error loading .env")
+		log.Fatal(err)
 	}
-
-	databseUrl := os.Getenv("DATABASE_URL")
-
-	db, err := database.NewPostgres(databseUrl)
+	
+	db, err := database.NewPostgres(cfg.DatabaseURL)
 
 	if err != nil {
 		log.Fatal(err)
@@ -37,14 +35,23 @@ func main() {
 	userService := service.NewUserService(userRepository)
 	userHandler := handler.NewUserHandler(userService)
 
-	http.HandleFunc("/", handler.Handler)
-	http.HandleFunc("/info", handler.GetServerOsInfo)
-	http.HandleFunc("POST /register", userHandler.Register)
-	http.HandleFunc("/get-by-email", userHandler.GetByEmail)
+	r := chi.NewRouter()
 
-	fmt.Println("Starting server on :8080")
+	r.Use(middleware.RequestID)
+	r.Use(middleware.RealIP)
+	r.Use(middleware.Logger)
+	r.Use(middleware.Recoverer)
 
-	if err := http.ListenAndServe(":8080", nil); err != nil {
+	r.Get("/", handler.Handler)
+	r.Get("/info", handler.GetServerOsInfo)
+	r.Post("/register", userHandler.Register)
+	r.Get("/get-by-email", userHandler.GetByEmail)
+
+	
+	address := ":" + cfg.Port
+	fmt.Printf("Starting server on %s\n", address)
+
+	if err := http.ListenAndServe(address, r); err != nil {
 		log.Fatal(err)
 	}
 }
